@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 
+const USDT_ADDRESS = 'TFz6KkZzdG5xvbfmE6CNhzkTxrAtPk8r1T'
+
 export default function Account() {
   const { user, profile, isPaid } = useAuth()
   const [txRef, setTxRef] = useState('')
@@ -44,7 +46,8 @@ export default function Account() {
         <div className="bg-panel border border-border rounded-lg p-4">
           <h2 className="text-sm font-semibold text-white mb-2">Upgrade — $15/month USDT</h2>
           <p className="text-xs text-gray-500 mb-3">
-            Send 15 USDT to: <span className="font-mono text-gray-300 break-all">YOUR_USDT_WALLET_ADDRESS</span>
+            Send 15 USDT (TRC20) to:<br />
+            <span className="font-mono text-gray-300 break-all">{USDT_ADDRESS}</span>
           </p>
           {submitted ? (
             <div className="text-accent text-sm">
