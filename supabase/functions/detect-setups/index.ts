@@ -7,8 +7,13 @@ const TWELVE_DATA_KEY = Deno.env.get('TWELVE_DATA_KEY')!
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
 const PAIRS = ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD', 'XAU/USD']
-const TIMEFRAMES: Record<string, string> = {
+
+const ALL_TIMEFRAMES: Record<string, string> = {
   MONTHLY: '1month', WEEKLY: '1week', DAILY: '1day', H4: '4h', H1: '1h', M30: '30min',
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function fetchCandles(symbol: string, interval: string) {
@@ -24,10 +29,9 @@ async function fetchCandles(symbol: string, interval: string) {
       low: parseFloat(v.low),
       close: parseFloat(v.close),
     }))
-    .reverse() // oldest first
+    .reverse()
 }
 
-// Find swing highs/lows that price has tested at least twice (a real level)
 function findLevels(candles: any[]) {
   const levels: { price: number; type: 'SUPPORT' | 'RESISTANCE' }[] = []
   for (let i = 2; i < candles.length - 2; i++) {
@@ -52,24 +56,37 @@ function computeVolatility(candles: any[]) {
   return 'NORMAL'
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  let requestedTimeframes: string[] = Object.keys(ALL_TIMEFRAMES)
+
+  try {
+    const body = await req.json()
+    if (Array.isArray(body?.timeframes) && body.timeframes.length > 0) {
+      requestedTimeframes = body.timeframes.filter((tf: string) => tf in ALL_TIMEFRAMES)
+    }
+  } catch {
+    // no body or invalid JSON — fall back to scanning all timeframes
+  }
+
   const results: string[] = []
 
   for (const pair of PAIRS) {
-    for (const [timeframe, interval] of Object.entries(TIMEFRAMES)) {
+    for (const timeframe of requestedTimeframes) {
+      const interval = ALL_TIMEFRAMES[timeframe]
       try {
         const candles = await fetchCandles(pair, interval)
+        await sleep(8000) // stay under Twelve Data's free-tier rate limit
+
         if (candles.length < 10) continue
 
-        const levels = findLevels(candles.slice(0, -2)) // exclude last 2 (rejection/confirm candidates)
+        const levels = findLevels(candles.slice(0, -2))
         const volatility = computeVolatility(candles)
         const rejectionCandle = candles[candles.length - 2]
         const latestCandle = candles[candles.length - 1]
 
         for (const level of levels) {
-          const tolerance = level.price * 0.0015 // ~0.15% proximity
+          const tolerance = level.price * 0.0015
 
-          // Bullish: wicked below support, closed back above it
           if (level.type === 'SUPPORT' &&
               rejectionCandle.low < level.price + tolerance &&
               rejectionCandle.close > level.price) {
@@ -101,7 +118,6 @@ Deno.serve(async () => {
             }, { onConflict: 'pair_symbol,timeframe,level_price' })
           }
 
-          // Bearish: wicked above resistance, closed back below it
           if (level.type === 'RESISTANCE' &&
               rejectionCandle.high > level.price - tolerance &&
               rejectionCandle.close < level.price) {
