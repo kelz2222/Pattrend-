@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { fetchCandles } from '../lib/twelveData'
-import { EconomicCalendar } from '../components/EconomicCalendar'
-import { SetupCard } from '../components/SetupCard'
-import { CandlestickChart } from '../components/CandlestickChart'
+import EconomicCalendar from '../components/EconomicCalendar'
+import SetupCard from '../components/SetupCard'
+import CandlestickChart from '../components/CandlestickChart'
 import { DailyFreeBanner } from '../components/DailyFreeBanner'
 
 const TIMEFRAMES = ['MONTHLY', 'WEEKLY', 'DAILY', 'H4', 'H1', 'M30']
@@ -110,11 +110,9 @@ export function Dashboard() {
               {confirmed.length === 0 ? (
                 <div className="bg-panel border border-border rounded p-6 text-center">
                   {!isPaid ? (
-                    <>
-                      <p className="text-panel mb-4">
-                        Confirmed setups are part of the paid plan ($15/month, USDT). <button onClick={() => navigate('/account')} className="text-accent hover:underline">Create an account</button>
-                      </p>
-                    </>
+                    <p className="text-panel mb-4">
+                      Confirmed setups are part of the paid plan ($15/month, USDT). <button onClick={() => navigate('/account')} className="text-accent hover:underline">Create an account</button>
+                    </p>
                   ) : (
                     <p className="text-panel">No confirmed setups on this timeframe.</p>
                   )}
